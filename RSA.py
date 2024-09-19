@@ -17,8 +17,9 @@ def extendedGcd(number1, number2):
 def modularInverse(number, module):
     gcd, x, y = extendedGcd(number, module)
     if gcd != 1:
-        print("Los números no son coprimos, por lo tanto, no existe el inverso modular")
-        return None
+        raise ValueError(
+            "Los números no son coprimos, por lo tanto, no existe el inverso modular"
+        )
     else:
         return x % module
 
@@ -95,7 +96,7 @@ def generateKeypair(bitLength=1024):
             )
 
         privateExponent = modularInverse(publicExponent, phi)
-        return (module, publicExponent), (module, privateExponent)
+        return (module, publicExponent), (module, privateExponent), prime1, prime2
 
     except Exception as e:
         print(f"Error inesperado: {e}")
@@ -130,13 +131,28 @@ def decryptMessage(encryptedNumber, privateKey):
     return numberToMessage(decryptedNumber)
 
 
+def decryptChineseRemainder(ciphertext, privateExponent, primeP, primeQ):
+    expModP = privateExponent % (primeP - 1)
+    expModQ = privateExponent % (primeQ - 1)
+
+    qInverseModP = modularInverse(primeQ, primeP)
+
+    decryptP = modularExponentiation(ciphertext, expModP, primeP)
+    decryptQ = modularExponentiation(ciphertext, expModQ, primeQ)
+
+    difference = (decryptP - decryptQ) * qInverseModP % primeP
+    decryptedMessage = decryptQ + difference * primeQ
+
+    return numberToMessage(decryptedMessage)
+
+
 def menu():
     try:
         print(" =============== RSA =============== ")
         mensaje = input("      Mensaje: ")
 
         print("\n   ---------- Claves ----------")
-        publicKey, privateKey = generateKeypair()
+        publicKey, privateKey, primeP, primeQ = generateKeypair()
         print(f"    Clave pública: ({publicKey})")
         print(f"    Clave privada: ({privateKey})")
 
@@ -145,7 +161,9 @@ def menu():
         print(f"    Mensaje Cifrado: {mensajeCifrado}")
 
         print("\n   -------- Descifrado -------")
-        mensajeDescifrado = decryptMessage(mensajeCifrado, privateKey)
+        mensajeDescifrado = decryptChineseRemainder(
+            mensajeCifrado, privateKey[1], primeP, primeQ
+        )
         print(f"    Mensaje Descifrado: {mensajeDescifrado}")
 
     except Exception as e:
