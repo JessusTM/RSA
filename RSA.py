@@ -50,7 +50,6 @@ def millerTest(oddComponent, numberToTest):
 
         if modResult == 1:
             return False
-
         if modResult == numberToTest - 1:
             return True
 
@@ -83,20 +82,74 @@ def generateLargePrime(bitLength):
 
 
 def generateKeypair(bitLength=1024):
-    prime1 = generateLargePrime(bitLength // 2)
-    prime2 = generateLargePrime(bitLength // 2)
-    modulus = prime1 * prime2
-    phi = (prime1 - 1) * (prime2 - 1)
+    try:
+        prime1 = generateLargePrime(bitLength // 2)
+        prime2 = generateLargePrime(bitLength // 2)
+        module = prime1 * prime2
+        phi = (prime1 - 1) * (prime2 - 1)
+        publicExponent = 65537
 
-    publicExponent = 65537
-    if gcd(publicExponent, phi) != 1:
-        print("El exponente público no es coprimo con φ(n)")
-        return None
+        if gcd(publicExponent, phi) != 1:
+            raise ValueError(
+                f"El exponente público no es coprimo con φ(n). gcd({publicExponent}, {phi}) = {gcd(publicExponent, phi)}"
+            )
 
-    privateExponent = modularInverse(publicExponent, phi)
+        privateExponent = modularInverse(publicExponent, phi)
+        return (module, publicExponent), (module, privateExponent)
 
-    if privateExponent is None:
-        print("No se pudo calcular el inverso modular")
-        return None
+    except Exception as e:
+        print(f"Error inesperado: {e}")
+        raise
 
-    return ((modulus, publicExponent), (modulus, privateExponent))
+
+def messageToNumber(message):
+    number = 0
+    for char in message:
+        number = number * 256 + ord(char)
+    return number
+
+
+def numberToMessage(number):
+    chars = []
+    while number > 0:
+        chars.append(chr(number % 256))
+        number //= 256
+    return "".join(reversed(chars))
+
+
+def encryptMessage(message, publicKey):
+    module, publicExponent = publicKey
+    messageNumber = messageToNumber(message)
+    encryptedNumber = modularExponentiation(messageNumber, publicExponent, module)
+    return encryptedNumber
+
+
+def decryptMessage(encryptedNumber, privateKey):
+    module, privateExponent = privateKey
+    decryptedNumber = modularExponentiation(encryptedNumber, privateExponent, module)
+    return numberToMessage(decryptedNumber)
+
+
+def menu():
+    try:
+        print(" =============== RSA =============== ")
+        mensaje = input("      Mensaje: ")
+
+        print("\n   ---------- Claves ----------")
+        publicKey, privateKey = generateKeypair()
+        print(f"    Clave pública: ({publicKey})")
+        print(f"    Clave privada: ({privateKey})")
+
+        print("\n   --------- Cifrado ----------")
+        mensajeCifrado = encryptMessage(mensaje, publicKey)
+        print(f"    Mensaje Cifrado: {mensajeCifrado}")
+
+        print("\n   -------- Descifrado -------")
+        mensajeDescifrado = decryptMessage(mensajeCifrado, privateKey)
+        print(f"    Mensaje Descifrado: {mensajeDescifrado}")
+
+    except Exception as e:
+        print(f"\nError: {e}")
+
+
+menu()
