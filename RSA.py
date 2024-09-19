@@ -6,11 +6,21 @@ def gcd(a, b):
     return math.gcd(a, b)
 
 
-def modularInverse(a, m):
-    for x in range(1, m):
-        if (a * x) % m == 1:
-            return x
-    return -1
+def extendedGcd(number1, number2):
+    if number1 == 0:
+        return (number2, 0, 1)
+    else:
+        gcd, x1, y1 = extendedGcd(number2 % number1, number1)
+        return (gcd, y1 - (number2 // number1) * x1, x1)
+
+
+def modularInverse(number, module):
+    gcd, x, y = extendedGcd(number, module)
+    if gcd != 1:
+        print("Los números no son coprimos, por lo tanto, no existe el inverso modular")
+        return None
+    else:
+        return x % module
 
 
 def modularExponentiation(base, exponent, module):
@@ -62,3 +72,31 @@ def isPrime(numberToTest, iterations):
             return False
 
     return True
+
+
+def generateLargePrime(bitLength):
+    while True:
+        primeCandidate = random.getrandbits(bitLength)
+        primeCandidate |= (1 << bitLength - 1) | 1
+        if isPrime(primeCandidate, 40):
+            return primeCandidate
+
+
+def generateKeypair(bitLength=1024):
+    prime1 = generateLargePrime(bitLength // 2)
+    prime2 = generateLargePrime(bitLength // 2)
+    modulus = prime1 * prime2
+    phi = (prime1 - 1) * (prime2 - 1)
+
+    publicExponent = 65537
+    if gcd(publicExponent, phi) != 1:
+        print("El exponente público no es coprimo con φ(n)")
+        return None
+
+    privateExponent = modularInverse(publicExponent, phi)
+
+    if privateExponent is None:
+        print("No se pudo calcular el inverso modular")
+        return None
+
+    return ((modulus, publicExponent), (modulus, privateExponent))
