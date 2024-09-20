@@ -2,6 +2,7 @@ import random
 import math
 
 
+# ----- GENERACIÓN DE CLAVES -----
 def gcd(a, b):
     return math.gcd(a, b)
 
@@ -22,20 +23,6 @@ def modularInverse(number, module):
         )
     else:
         return x % module
-
-
-def modularExponentiation(base, exponent, module):
-    result = 1
-    base = base % module
-
-    while exponent > 0:
-        if exponent & 1:
-            result = (result * base) % module
-
-        exponent = exponent >> 1
-        base = (base * base) % module
-
-    return result
 
 
 def millerTest(oddComponent, numberToTest):
@@ -103,6 +90,7 @@ def generateKeypair(bitLength=1024):
         raise
 
 
+# ----- CIFRADO -----
 def messageToNumber(message):
     number = 0
     for char in message:
@@ -110,12 +98,18 @@ def messageToNumber(message):
     return number
 
 
-def numberToMessage(number):
-    chars = []
-    while number > 0:
-        chars.append(chr(number % 256))
-        number //= 256
-    return "".join(reversed(chars))
+def modularExponentiation(base, exponent, module):
+    result = 1
+    base = base % module
+
+    while exponent > 0:
+        if exponent & 1:
+            result = (result * base) % module
+
+        exponent = exponent >> 1
+        base = (base * base) % module
+
+    return result
 
 
 def encryptMessage(message, publicKey):
@@ -123,6 +117,15 @@ def encryptMessage(message, publicKey):
     messageNumber = messageToNumber(message)
     encryptedNumber = modularExponentiation(messageNumber, publicExponent, module)
     return encryptedNumber
+
+
+# ----- DESCIFRADO -----
+def numberToMessage(number):
+    chars = []
+    while number > 0:
+        chars.append(chr(number % 256))
+        number //= 256
+    return "".join(reversed(chars))
 
 
 def decryptMessage(encryptedNumber, privateKey):
@@ -146,6 +149,7 @@ def decryptChineseRemainder(ciphertext, privateExponent, primeP, primeQ):
     return numberToMessage(decryptedMessage)
 
 
+# ----- MENÚ -----
 def menu():
     try:
         print(" =============== RSA =============== ")
