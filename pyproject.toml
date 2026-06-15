@@ -1,0 +1,7 @@
+[project]
+name = "rsa"
+version = "0.1.0"
+description = "Educational RSA with OAEP padding CLI for key generation, encryption, and decryption."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
