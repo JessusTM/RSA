@@ -1,3 +1,5 @@
+from random import randint
+
 from src.math_utils import euclidean_extended_algorithm, gcd, is_prime
 
 
@@ -14,6 +16,28 @@ def generate_module(p: int, q: int) -> int | None:
 
     n = p * q
     return n
+
+
+def generate_random_prime(min_value: int, max_value: int) -> int:
+    """Generates a random prime number inside a range."""
+    number = randint(min_value, max_value)
+
+    while not is_prime(number):
+        number = randint(min_value, max_value)
+
+    return number
+
+
+def generate_random_primes() -> tuple[int, int]:
+    """Generates random valid prime numbers for ASCII encryption."""
+    p = generate_random_prime(11, 100)
+    q = generate_random_prime(11, 100)
+
+    while p == q or not is_valid_module_for_ascii(p * q):
+        p = generate_random_prime(11, 100)
+        q = generate_random_prime(11, 100)
+
+    return p, q
 
 
 def is_valid_module_for_ascii(n: int) -> bool:
