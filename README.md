@@ -41,7 +41,7 @@ This repository contains:
 - Documentation about the changes made to implement RSAES-OAEP.
 
 > [!NOTE]
-> SHA-256 is provided by Python's standard library through `hashlib`. The project implements the RSAES-OAEP flow, MGF1 usage, block handling, and RSA operations; implementing SHA-256 itself is outside this repository's focus.
+> SHA-256 is provided by Python's standard library through `hashlib`. The OAEP random seed is also generated with Python's standard cryptographic randomness through `secrets.token_bytes(...)`, instead of a from-scratch random generator. The project implements the RSAES-OAEP flow, MGF1 usage, block handling, and RSA operations; implementing SHA-256 or a cryptographic random generator itself is outside this repository's focus.
 
 ## Current Implementation
 

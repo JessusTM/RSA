@@ -30,7 +30,7 @@ def oaep_encode(message: bytes, key_size: int) -> bytes | None:
     # checked again during decoding, so both sides must use the same label.
     label_hash = hash_message(LABEL)
 
-    # 2. DB = Hash(L) || 00...00 || 01 || m.
+    # 2. DB = Hash(L) || PS || 01 || m.
     padding_size = key_size - len(message) - 2 * HASH_LENGTH - 2
     padding = b"\x00" * padding_size
     separator = b"\x01"

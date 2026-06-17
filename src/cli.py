@@ -8,6 +8,89 @@ from src.rsa import (
     get_max_message_block_size,
 )
 
+NUMBER_WIDTH = 80
+
+
+def split_number_text(number: int, width: int = NUMBER_WIDTH) -> list[str]:
+    """Splits a large number into fixed-width text chunks."""
+    text = str(number)
+    chunks = []
+
+    for start in range(0, len(text), width):
+        end = start + width
+        chunks.append(text[start:end])
+
+    return chunks
+
+
+def print_large_value(label: str, value: int) -> None:
+    """Prints a label and wraps large integer values."""
+    chunks = split_number_text(value)
+    print(f"                {label:<24}: {chunks[0]}")
+
+    for chunk in chunks[1:]:
+        print(f"                {'':<24}  {chunk}")
+
+
+def print_wrapped_block(block: int) -> None:
+    """Prints an encrypted block in copy-friendly wrapped lines."""
+    for chunk in split_number_text(block):
+        print(f"                {chunk}")
+
+
+def parse_encrypted_blocks(encrypted_input: str) -> list[int] | None:
+    """Parses encrypted blocks from one-line or wrapped pasted input."""
+    if not encrypted_input.strip():
+        return None
+
+    if "|" in encrypted_input:
+        raw_blocks = encrypted_input.split("|")
+        encrypted_blocks = []
+
+        for raw_block in raw_blocks:
+            block = "".join(raw_block.split())
+            if not block or not block.isdigit():
+                return None
+
+            encrypted_blocks.append(int(block))
+
+        return encrypted_blocks
+
+    encrypted_numbers = encrypted_input.split()
+    if not encrypted_numbers:
+        return None
+
+    numbers_are_valid = all(number.isdigit() for number in encrypted_numbers)
+    if not numbers_are_valid:
+        return None
+
+    # Wrapped output splits one ciphertext across short digit chunks. If every
+    # chunk is at most NUMBER_WIDTH, rebuild it as one encrypted block.
+    if len(encrypted_numbers) > 1 and all(
+        len(number) <= NUMBER_WIDTH for number in encrypted_numbers
+    ):
+        return [int("".join(encrypted_numbers))]
+
+    return [int(number) for number in encrypted_numbers]
+
+
+def read_encrypted_blocks() -> list[int] | None:
+    """Reads encrypted blocks until an empty line is entered."""
+    print("                Encrypted blocks:")
+    print("                Paste blocks, then press Enter on an empty line.")
+    print("                Use '|' between wrapped blocks if there is more than one.")
+
+    lines = []
+    while True:
+        line = input("                > ")
+        if line == "":
+            break
+
+        lines.append(line)
+
+    encrypted_input = "\n".join(lines)
+    return parse_encrypted_blocks(encrypted_input)
+
 
 def show_menu() -> None:
     """Prints the main menu options."""
@@ -22,8 +105,15 @@ def show_menu() -> None:
 
 def show_keys(public_key: tuple[int, int], private_key: tuple[int, int]) -> None:
     """Prints public and private keys."""
-    print(f"                Public Key             : {public_key}")
-    print(f"                Private Key            : {private_key}")
+    public_n, public_e = public_key
+    private_n, private_d = private_key
+
+    print("                Public Key:")
+    print_large_value("n", public_n)
+    print_large_value("e", public_e)
+    print("                Private Key:")
+    print_large_value("n", private_n)
+    print_large_value("d", private_d)
 
 
 def show_rsa_values(
@@ -35,12 +125,12 @@ def show_rsa_values(
     d: int,
 ) -> None:
     """Prints the main RSA values."""
-    print(f"                Prime p                : {p}")
-    print(f"                Prime q                : {q}")
-    print(f"                Module (n)             : {n}")
-    print(f"                Euler's Totient (φ(n)) : {totient}")
-    print(f"                Public Exponent (e)    : {e}")
-    print(f"                Private Exponent (d)   : {d}")
+    print_large_value("Prime p", p)
+    print_large_value("Prime q", q)
+    print_large_value("Module (n)", n)
+    print_large_value("Euler's Totient", totient)
+    print_large_value("Public Exponent (e)", e)
+    print_large_value("Private Exponent (d)", d)
 
 
 def menu() -> None:
@@ -91,10 +181,6 @@ def menu() -> None:
                 print("            Generate RSA keys first.")
                 continue
 
-            print("            This option receives text and returns")
-            print("            RSAES-OAEP encrypted blocks.")
-            print()
-
             message = input("                Message                 : ")
             encrypted_message = encrypt_message(message, public_key)
 
@@ -102,12 +188,12 @@ def menu() -> None:
                 print("                Could not encrypt message.")
                 continue
 
-            encrypted_blocks = []
-            for encrypted_block in encrypted_message:
-                encrypted_blocks.append(str(encrypted_block))
+            print("                Encrypted Blocks:")
+            for index, encrypted_block in enumerate(encrypted_message):
+                if index > 0:
+                    print("                |")
 
-            encrypted_blocks_text = " ".join(encrypted_blocks)
-            print(f"                Encrypted Blocks        : {encrypted_blocks_text}")
+                print_wrapped_block(encrypted_block)
 
         elif option == "4":
             print("\n        ----- Decrypt Message -----")
@@ -115,21 +201,10 @@ def menu() -> None:
                 print("            Generate RSA keys first.")
                 continue
 
-            print("            This option receives encrypted blocks separated")
-            print("            by spaces and returns plain text.")
-            print()
-
-            encrypted_input = input("                Encrypted blocks        : ")
-            encrypted_numbers = encrypted_input.split()
-            numbers_are_valid = all(number.isdigit() for number in encrypted_numbers)
-
-            if not encrypted_numbers or not numbers_are_valid:
-                print("                Encrypted blocks must be separated by spaces.")
+            encrypted_message = read_encrypted_blocks()
+            if encrypted_message is None:
+                print("                Invalid encrypted blocks.")
                 continue
-
-            encrypted_message = []
-            for number in encrypted_numbers:
-                encrypted_message.append(int(number))
 
             message = decrypt_message(encrypted_message, private_key)
             if message is None:
