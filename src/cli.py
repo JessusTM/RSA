@@ -1,28 +1,23 @@
+"""Interactive command-line interface."""
+
 from src.rsa import (
-    calculate_phi_n,
+    DEFAULT_KEY_BITS,
     decrypt_message,
     encrypt_message,
-    generate_module,
-    generate_private_exponent,
-    generate_private_key,
-    generate_public_exponent,
-    generate_public_key,
-    generate_random_primes,
-    is_valid_message_for_ascii,
-    is_valid_module_for_ascii,
+    generate_key_pair,
+    get_max_message_block_size,
 )
 
 
-# ------------ CLI UTILS ------------
 def show_menu() -> None:
     """Prints the main menu options."""
-    print("\n # ======== RSA with OAEP ======== # ")
+    print("\n # ======== RSAES-OAEP ======== # ")
     print("     [1] Generate RSA keys")
     print("     [2] Show keys")
     print("     [3] Encrypt message")
     print("     [4] Decrypt message")
     print("     [5] Exit")
-    print(" # ---------------- -------------- # ")
+    print(" # ---------------- ----------- # ")
 
 
 def show_keys(public_key: tuple[int, int], private_key: tuple[int, int]) -> None:
@@ -31,89 +26,50 @@ def show_keys(public_key: tuple[int, int], private_key: tuple[int, int]) -> None
     print(f"                Private Key            : {private_key}")
 
 
-def show_rsa_values(n: int, phi_n: int, e: int, d: int) -> None:
+def show_rsa_values(
+    p: int,
+    q: int,
+    n: int,
+    totient: int,
+    e: int,
+    d: int,
+) -> None:
     """Prints the main RSA values."""
+    print(f"                Prime p                : {p}")
+    print(f"                Prime q                : {q}")
     print(f"                Module (n)             : {n}")
-    print(f"                Euler's Totient (φ(n)) : {phi_n}")
+    print(f"                Euler's Totient (φ(n)) : {totient}")
     print(f"                Public Exponent (e)    : {e}")
     print(f"                Private Exponent (d)   : {d}")
 
 
-# ------------ MENU ------------
 def menu() -> None:
     """Runs the interactive menu."""
     public_key = None
     private_key = None
+    rsa_values = None
 
     while True:
         show_menu()
         option = input("     Option: ")
-        print(" # ================ ============== # ")
+        print(" # ================ ========== # ")
 
         if option == "1":
-            while True:
-                print("\n        ----- Generate RSA Keys ----- ")
-                print("                [1] Random primes")
-                print("                [2] Manual primes")
-                print("                [3] Back")
-                generation_option = input("            Option : ")
-                print("        -------------- -------------- ")
+            print("\n        ----- Generate RSA Keys ----- ")
+            print(f"            Generating {DEFAULT_KEY_BITS}-bit RSA keys...")
 
-                if generation_option == "1":
-                    print("\n            -- Generated P and Q --")
-                    p, q = generate_random_primes()
-                    print(f"                Generated p            : {p}")
-                    print(f"                Generated q            : {q}")
+            key_data = generate_key_pair(DEFAULT_KEY_BITS)
+            public_key, private_key, p, q, n, totient, d = key_data
+            _, e = public_key
+            rsa_values = p, q, n, totient, e, d
 
-                elif generation_option == "2":
-                    print("\n            -- Manual P and Q --")
-                    p_input = input("                Prime number p         : ")
-                    q_input = input("                Prime number q         : ")
+            print("\n            -- RSA Values --")
+            show_rsa_values(p, q, n, totient, e, d)
+            print("\n            -- Generated Keys --")
+            show_keys(public_key, private_key)
 
-                    if not p_input.isdigit() or not q_input.isdigit():
-                        print("            Only numeric values are allowed.")
-                        continue
-
-                    p = int(p_input)
-                    q = int(q_input)
-
-                elif generation_option == "3":
-                    break
-
-                else:
-                    print("            Please choose a valid option.")
-                    continue
-
-                n = generate_module(p, q)
-                if n is None:
-                    print("            p and q must be prime numbers.")
-                    continue
-
-                if not is_valid_module_for_ascii(n):
-                    print(
-                        "            p and q are too small. n must be greater than 127."
-                    )
-                    continue
-
-                phi_n = calculate_phi_n(p, q)
-                e = generate_public_exponent(phi_n)
-                if e is None:
-                    print("            Could not generate public exponent.")
-                    continue
-
-                d = generate_private_exponent(e, phi_n)
-                if d is None:
-                    print("            Could not generate private exponent.")
-                    continue
-
-                public_key = generate_public_key(n, e)
-                private_key = generate_private_key(n, d)
-
-                print("\n            -- RSA Values --")
-                show_rsa_values(n, phi_n, e, d)
-                print("\n            -- Generated Keys --")
-                show_keys(public_key, private_key)
-                break
+            block_size = get_max_message_block_size(public_key)
+            print(f"                Max OAEP Block Size    : {block_size} bytes")
 
         elif option == "2":
             print("\n        ----- Show Keys -----")
@@ -121,6 +77,12 @@ def menu() -> None:
                 print("            Generate RSA keys first.")
                 continue
 
+            if rsa_values is not None:
+                p, q, n, totient, e, d = rsa_values
+                print("\n            -- RSA Values --")
+                show_rsa_values(p, q, n, totient, e, d)
+
+            print("\n            -- Generated Keys --")
             show_keys(public_key, private_key)
 
         elif option == "3":
@@ -129,17 +91,23 @@ def menu() -> None:
                 print("            Generate RSA keys first.")
                 continue
 
-            print("            This option receives plain text and returns")
-            print("            encrypted numbers.")
+            print("            This option receives text and returns")
+            print("            RSAES-OAEP encrypted blocks.")
             print()
 
             message = input("                Message                 : ")
-            if not is_valid_message_for_ascii(message):
-                print("                Only standard ASCII characters are allowed.")
+            encrypted_message = encrypt_message(message, public_key)
+
+            if encrypted_message is None:
+                print("                Could not encrypt message.")
                 continue
 
-            encrypted_message = encrypt_message(message, public_key)
-            print(f"                Encrypted Message       : {encrypted_message}")
+            encrypted_blocks = []
+            for encrypted_block in encrypted_message:
+                encrypted_blocks.append(str(encrypted_block))
+
+            encrypted_blocks_text = " ".join(encrypted_blocks)
+            print(f"                Encrypted Blocks        : {encrypted_blocks_text}")
 
         elif option == "4":
             print("\n        ----- Decrypt Message -----")
@@ -147,20 +115,27 @@ def menu() -> None:
                 print("            Generate RSA keys first.")
                 continue
 
-            print("            This option receives encrypted numbers separated")
+            print("            This option receives encrypted blocks separated")
             print("            by spaces and returns plain text.")
             print()
 
-            encrypted_input = input("                Encrypted numbers       : ")
+            encrypted_input = input("                Encrypted blocks        : ")
             encrypted_numbers = encrypted_input.split()
-            if not encrypted_numbers or not all(
-                number.isdigit() for number in encrypted_numbers
-            ):
-                print("                Encrypted numbers must be separated by spaces.")
+            numbers_are_valid = all(number.isdigit() for number in encrypted_numbers)
+
+            if not encrypted_numbers or not numbers_are_valid:
+                print("                Encrypted blocks must be separated by spaces.")
                 continue
 
-            encrypted_message = [int(number) for number in encrypted_numbers]
+            encrypted_message = []
+            for number in encrypted_numbers:
+                encrypted_message.append(int(number))
+
             message = decrypt_message(encrypted_message, private_key)
+            if message is None:
+                print("                Could not decrypt message.")
+                continue
+
             print(f"                Decrypted Message       : {message}")
 
         elif option == "5":
